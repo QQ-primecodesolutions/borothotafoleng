@@ -1,0 +1,51 @@
+// Prisma schema for the Borotho Tafoleng site.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// An enquiry submitted through the contact form or the quote modal.
+///
+/// This is the record of truth for a lead: the notification email is a
+/// convenience and may fail (no API key, provider outage, bounced address),
+/// but the row is written first so an enquiry is never silently lost.
+model Lead {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  /// Which form it came from: "contact" or "quote".
+  source String
+
+  name    String
+  phone   String
+  email   String?
+  /// Contact form only — the enquiry subject the visitor picked.
+  subject String?
+
+  /// Quote modal only.
+  service       String?
+  propertyType  String?
+  location      String?
+  preferredDate String?
+
+  message String?
+
+  /// POPIA: the visitor ticked the consent box before submitting.
+  consentedAt DateTime
+
+  /// Whether the notification email went out. False means someone needs to
+  /// read this row manually — see `bun run leads`.
+  notified Boolean @default(false)
+
+  /// Workflow state for whoever follows leads up.
+  status String @default("new")
+
+  @@index([createdAt])
+  @@index([status])
+}
