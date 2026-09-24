@@ -16,7 +16,7 @@ The site is a single animated landing page covering the company's story, service
 | Animation | Framer Motion |
 | Forms | react-hook-form + Zod |
 | Runtime / package manager | Bun |
-| ORM (scaffolding, unused) | Prisma + SQLite |
+| Database | Prisma ORM + Prisma Postgres |
 
 ## Getting started
 
@@ -40,33 +40,48 @@ The site runs at http://localhost:3000.
 | `bun run leads` | Print website enquiries from the database (`-- --all`, `-- --new`) |
 | `bunx tsc --noEmit` | Type-check (the build does this too) |
 
-Prisma helpers: `db:push` applies `prisma/schema.prisma` to the SQLite file, `db:generate` regenerates the client, `db:migrate` / `db:reset` for migrations.
+Prisma helpers: `db:migrate` creates and applies a migration after a schema edit, `db:deploy` applies existing migrations (this is what the build runs), `db:generate` regenerates the client, `db:reset` drops and rebuilds the database.
+
+`bun run build` runs `prisma generate && prisma migrate deploy` first, so **the build needs a reachable `DATABASE_URL`** — it will fail rather than deploy a site whose forms can't save.
 
 ## Project structure
 
 ```
 src/
   app/
-    page.tsx          # the entire single-page site (all sections)
+    page.tsx          # composes the sections — no markup of its own
     layout.tsx        # fonts, SEO metadata, Schema.org LocalBusiness JSON-LD
     icon.svg          # favicon (Next generates the <link> tags from this)
     globals.css       # Tailwind v4 theme tokens + brand palette
     privacy/          # POPIA privacy policy
     api/quote/        # POST endpoint for the contact & quote forms
-  components/         # hand-written site components (navbar, footer, cards…)
-  components/ui/      # generated shadcn/ui primitives
+  components/
+    sections/         # one file per page section, in scroll order
+      hero-section.tsx
+      about-section.tsx
+      services-section.tsx
+      why-choose-us-section.tsx
+      community-impact-section.tsx
+      credentials-section.tsx
+      contact-section.tsx
+    …                 # reusable pieces (navbar, footer, cards, timeline…)
+    ui/               # generated shadcn/ui primitives
   hooks/              # use-mobile, use-toast
   lib/
     constants.ts      # ALL site content lives here
     enquiry.ts        # shared Zod schemas for both forms + the API route
     notify.ts         # enquiry notification email (Resend)
     rate-limit.ts     # in-memory rate limiting for the enquiry endpoint
+    quote-modal.ts    # openQuoteModal() + the event name
+    scroll.ts         # scrollToSection() + shared animation config
     utils.ts          # cn() class helper
     db.ts             # Prisma client singleton
 scripts/leads.ts      # CLI to read enquiries out of the database
 public/images/        # hero, services, gallery, team, about, logo assets
 prisma/schema.prisma  # Lead model
 ```
+
+Three of the ten sections (stats, FAQ, CTA) were already standalone components and stay where they are; the other seven live under `sections/`. Each section reads what it needs from `constants.ts` and takes no props, so adding or reordering a section is an edit to [`page.tsx`](src/app/page.tsx) alone.
 
 ### Editing content
 
@@ -109,7 +124,7 @@ Both the inline contact form and the quote modal validate against the shared sch
 1. **Rate limits** by IP — 5 enquiries per 10 minutes ([`rate-limit.ts`](src/lib/rate-limit.ts), in-memory and per-instance)
 2. **Validates** with the same Zod schema the browser used
 3. **Drops bot submissions** silently via a honeypot field, answering 200 so the bot doesn't adapt
-4. **Saves the lead** to SQLite — this is the record of truth
+4. **Saves the lead** to Postgres — this is the record of truth
 5. **Emails a notification** via Resend, best effort
 
 Step 5 never fails the request. If the email cannot be sent the lead is still saved with `notified: false`, and a warning is logged. Read those with `bun run leads -- --new`.
@@ -118,9 +133,30 @@ Step 5 never fails the request. If the email cannot be sent the lead is still sa
 
 ### Database
 
-Prisma + SQLite, one `Lead` model in [`prisma/schema.prisma`](prisma/schema.prisma). `DATABASE_URL` in `.env` points at `file:./db/custom.db`. After changing the schema run `bun run db:push`.
+Prisma ORM against **Prisma Postgres**, one `Lead` model in [`prisma/schema.prisma`](prisma/schema.prisma).
 
-Note that SQLite is a file on the server's disk: on a platform with an ephemeral filesystem the leads disappear on redeploy. That's fine for a VPS or a persistent volume, but if you deploy to Vercel or similar, move `DATABASE_URL` to a hosted Postgres (Neon, Supabase) and change the `provider` line in the schema.
+Prisma Postgres issues a `prisma+postgres://` connection string, which is a pooled protocol rather than a raw TCP one. Two consequences worth knowing before you change anything:
+
+- [`src/lib/db.ts`](src/lib/db.ts) applies `withAccelerate()` from `@prisma/extension-accelerate`. Without it the client cannot speak `prisma+postgres://` and every query fails.
+- The `provider` in the schema is fixed at build time — Prisma cannot switch between SQLite and Postgres per environment, so local development needs a Postgres URL too.
+
+#### Getting a connection string
+
+Either route produces the same kind of URL:
+
+**On Vercel** — Project → Storage → Prisma Postgres → Create. The integration writes `DATABASE_URL` into the project's environment variables for you; nothing to copy.
+
+**Standalone** — sign in at [console.prisma.io](https://console.prisma.io), create a project and a database (pick the region closest to South Africa), and copy the `prisma+postgres://accelerate.prisma-data.net/?api_key=…` string it shows. That string *is* the credential — anyone holding it has full read/write on the database, so it belongs in an environment variable and never in the repo.
+
+Create a **second, free database for local development** and put its URL in `.env`, so local testing never writes into the live leads table.
+
+#### Changing the schema
+
+```bash
+bun run db:migrate       # creates prisma/migrations/<timestamp>_<name>/ and applies it
+```
+
+Commit the generated migration folder. `bun run build` runs `prisma migrate deploy`, so whatever you committed is applied to production on the next deploy. `prisma/migrations/0_init/` creates the `Lead` table on a fresh database.
 
 ### POPIA
 
@@ -139,7 +175,18 @@ For a self-hosted/Docker deployment you can add `output: "standalone"` back to `
 
 The build type-checks (`ignoreBuildErrors` is off), so a green build means the code compiles. The ESLint config still disables most rules, so lint remains a weak signal.
 
-Remember to set `RESEND_API_KEY` and `QUOTE_NOTIFY_FROM` in the deployment environment, and to point `DATABASE_URL` at storage that survives a redeploy.
+### Vercel
+
+Add both marketplace integrations Vercel offers during setup — neither is really optional here:
+
+| Integration | Sets | Why |
+| --- | --- | --- |
+| Prisma Postgres | `DATABASE_URL` | Vercel's filesystem is read-only and ephemeral, so there is nowhere for a local database file to live. Without it every enquiry fails. |
+| Resend | `RESEND_API_KEY` | Notification emails. Leads still save without it, just silently. |
+
+Then set `QUOTE_NOTIFY_FROM` (and optionally `QUOTE_NOTIFY_EMAIL`) by hand — Resend only sends from a domain you have verified in its dashboard.
+
+The rate limiter in [`rate-limit.ts`](src/lib/rate-limit.ts) counts in process memory, so on serverless each warm instance keeps its own tally and the effective limit is looser than 5 per 10 minutes. Adequate at this traffic level; move it to Redis if it ever has to hold.
 
 ## Credits
 

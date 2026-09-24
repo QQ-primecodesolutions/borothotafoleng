@@ -18,6 +18,7 @@ import {
   EMAIL_HREF,
   whatsappUrl,
 } from "@/lib/constants";
+import { openQuoteModal } from "@/lib/quote-modal";
 
 // Both lists are derived, so adding a section or a service in constants.ts
 // flows through to the footer automatically.
@@ -36,9 +37,6 @@ export function Footer() {
     }
   };
 
-  const openQuoteModal = () => {
-    window.dispatchEvent(new CustomEvent("open-quote-modal"));
-  };
 
   return (
     <footer className="bg-brand-dark text-gray-300">

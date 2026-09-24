@@ -13,6 +13,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { NAV_ITEMS } from "@/lib/constants";
+import { openQuoteModal } from "@/lib/quote-modal";
 
 // Derived from the single nav definition in constants.ts — the section ids here
 // are the bare element ids ("home"), not the "#home" anchors.
@@ -56,8 +57,8 @@ export function Navbar() {
     setMobileOpen(false);
   };
 
-  const openQuoteModal = () => {
-    window.dispatchEvent(new CustomEvent("open-quote-modal"));
+  const handleQuoteClick = () => {
+    openQuoteModal();
     setMobileOpen(false);
   };
 
@@ -142,7 +143,7 @@ export function Navbar() {
           {/* CTA + Mobile Toggle */}
           <div className="flex items-center gap-3">
             <Button
-              onClick={openQuoteModal}
+              onClick={handleQuoteClick}
               className={`hidden md:inline-flex rounded-xl px-5 py-2.5 font-semibold text-sm transition-all ${
                 scrolled
                   ? "bg-brand-blue hover:bg-brand-blue-dark text-white shadow-lg shadow-brand-blue/25"
@@ -219,7 +220,7 @@ export function Navbar() {
 
               <div className="p-4 mt-auto border-t border-gray-100">
                 <Button
-                  onClick={openQuoteModal}
+                  onClick={handleQuoteClick}
                   className="w-full bg-brand-blue hover:bg-brand-blue-dark text-white rounded-xl py-3 font-semibold"
                 >
                   Get a Quote

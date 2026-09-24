@@ -39,6 +39,7 @@ import {
   HONEYPOT_FIELD,
   type QuoteFormValues,
 } from "@/lib/enquiry";
+import { QUOTE_MODAL_EVENT } from "@/lib/quote-modal";
 
 // Derived from the site content, so a new service in constants.ts shows up here.
 const serviceOptions = SERVICE_OPTIONS;
@@ -73,8 +74,8 @@ export function QuoteModal() {
 
   useEffect(() => {
     const handler = () => handleOpen();
-    window.addEventListener("open-quote-modal", handler);
-    return () => window.removeEventListener("open-quote-modal", handler);
+    window.addEventListener(QUOTE_MODAL_EVENT, handler);
+    return () => window.removeEventListener(QUOTE_MODAL_EVENT, handler);
   }, [handleOpen]);
 
   const onSubmit = async (data: QuoteFormValues) => {

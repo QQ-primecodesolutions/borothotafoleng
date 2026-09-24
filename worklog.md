@@ -344,3 +344,31 @@ Stage Summary:
 - All fixes are non-breaking, no visual changes to the website
 - ESLint: ✅ Zero errors
 - Dev server: ✅ Clean compilation
+
+---
+Task ID: 12
+Agent: Claude Code (Opus 5)
+Task: Split the single-page component out of page.tsx, and move the database from SQLite to Prisma Postgres for Vercel
+
+Work Log:
+
+Page composition
+- Extracted seven sections out of the 1,241-line `src/app/page.tsx` into `src/components/sections/` (hero, about, services, why-choose-us, community-impact, credentials, contact). Each reads from `constants.ts` and takes no props; `page.tsx` is now 63 lines of pure composition. Stats, FAQ and CTA were already standalone components and stayed put.
+- Pulled the two helpers the sections shared into `src/lib/quote-modal.ts` (`openQuoteModal()` + the event name) and `src/lib/scroll.ts` (`scrollToSection()`, `fadeIn`, `viewportOnce`), so the modal event name is no longer written out by hand in five places.
+
+Database
+- `prisma/schema.prisma`: datasource provider `sqlite` → `postgresql`. SQLite cannot work on Vercel — the filesystem is read-only and ephemeral, and `db/` is gitignored, so the file was never deployed. Every enquiry would have hit the 500 path in the route.
+- `src/lib/db.ts`: added `withAccelerate()` from `@prisma/extension-accelerate`. Prisma Postgres hands out a `prisma+postgres://` URL, which is a pooled protocol the bare client cannot speak. Also narrowed query logging to development.
+- Added `prisma/migrations/0_init/` (generated offline with `prisma migrate diff --from-empty`) plus `migration_lock.toml`, replacing the previous `db push` workflow — production now gets a reviewable, committed migration.
+- `build` is now `prisma generate && prisma migrate deploy && next build`. `generate` belongs in the build rather than a `postinstall` because Vercel restores a dependency cache and bun blocks untrusted lifecycle scripts, so a cached install would ship a stale client. Added `db:deploy`.
+
+Verification:
+- `bunx tsc --noEmit`: clean
+- `bunx next build`: compiles, all 6 routes emitted
+- Connection protocol tested directly against a `prisma+postgres://` URL with a deliberately invalid key: the client constructs and reaches Accelerate, returning P6002 (bad API key) rather than a URL-validation error — confirming the extension is wired correctly
+
+Stage Summary:
+- page.tsx: 1,241 → 63 lines, 7 new section components, 2 new shared lib modules
+- Database moved to Prisma Postgres; migration committed; build applies it
+- README and CLAUDE.md updated: how to obtain a connection string, the migration workflow, the Vercel integrations, and the per-instance limitation of the in-memory rate limiter
+- Known follow-ups: local `.env` still points `DATABASE_URL` at the old SQLite file and must be repointed at a dev Postgres database; contact details in `constants.ts` are still placeholders
