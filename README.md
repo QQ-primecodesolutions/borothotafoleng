@@ -135,10 +135,18 @@ Step 5 never fails the request. If the email cannot be sent the lead is still sa
 
 Prisma ORM against **Prisma Postgres**, one `Lead` model in [`prisma/schema.prisma`](prisma/schema.prisma).
 
-Prisma Postgres issues a `prisma+postgres://` connection string, which is a pooled protocol rather than a raw TCP one. Two consequences worth knowing before you change anything:
+Prisma Postgres offers the database under two connection strings, and either works here:
 
-- [`src/lib/db.ts`](src/lib/db.ts) applies `withAccelerate()` from `@prisma/extension-accelerate`. Without it the client cannot speak `prisma+postgres://` and every query fails.
-- The `provider` in the schema is fixed at build time — Prisma cannot switch between SQLite and Postgres per environment, so local development needs a Postgres URL too.
+| Form | Looks like | Notes |
+| --- | --- | --- |
+| Direct (pooled TCP) | `postgres://…@pooled.db.prisma.io:5432/postgres?sslmode=require` | What the project currently uses. An ordinary Postgres DSN — any Postgres tool can read it. |
+| Accelerate | `prisma+postgres://accelerate.prisma-data.net/?api_key=…` | Pooled HTTP protocol. Only the Prisma client can speak it, and only with the extension below. |
+
+[`src/lib/db.ts`](src/lib/db.ts) applies `withAccelerate()` from `@prisma/extension-accelerate`, which is **required** for the second form and a verified pass-through for the first. Keeping it means the connection string can be switched without touching code.
+
+The `provider` in the schema is fixed at build time — Prisma cannot switch between SQLite and Postgres per environment, so local development needs a Postgres URL too.
+
+Note that in both forms the credential is embedded in the URL, so the string itself is the secret. It belongs in an environment variable and never in the repo.
 
 #### Getting a connection string
 
@@ -146,7 +154,7 @@ Either route produces the same kind of URL:
 
 **On Vercel** — Project → Storage → Prisma Postgres → Create. The integration writes `DATABASE_URL` into the project's environment variables for you; nothing to copy.
 
-**Standalone** — sign in at [console.prisma.io](https://console.prisma.io), create a project and a database (pick the region closest to South Africa), and copy the `prisma+postgres://accelerate.prisma-data.net/?api_key=…` string it shows. That string *is* the credential — anyone holding it has full read/write on the database, so it belongs in an environment variable and never in the repo.
+**Standalone** — sign in at [console.prisma.io](https://console.prisma.io), create a project and a database (pick the region closest to South Africa), and copy either connection string it shows into `DATABASE_URL`.
 
 Create a **second, free database for local development** and put its URL in `.env`, so local testing never writes into the live leads table.
 
