@@ -131,6 +131,10 @@ Step 5 never fails the request. If the email cannot be sent the lead is still sa
 
 **To switch notification emails on**, copy `.env.example` to `.env` and fill in `RESEND_API_KEY` and `QUOTE_NOTIFY_FROM` (a [Resend](https://resend.com) account plus a verified sending domain). Until then enquiries are stored but nobody is notified.
 
+The sending domain does **not** have to be the company's own. This mail never reaches a customer — it is an internal "you have a new lead" notice — and `replyTo` is set to the enquirer's address, so hitting reply in the inbox writes to them, not to the sender. Any domain verified in the Resend account will do, which is useful while `borothotafoleng.co.za` is still a placeholder.
+
+`QUOTE_NOTIFY_EMAIL` (the recipient) needs no verification at all and can be an ordinary mailbox. Set it explicitly — its default is `COMPANY.email`, which is a placeholder address, so leaving it unset means notifications go nowhere.
+
 ### Database
 
 Prisma ORM against **Prisma Postgres**, one `Lead` model in [`prisma/schema.prisma`](prisma/schema.prisma).

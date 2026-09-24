@@ -12,7 +12,9 @@ import type { EnquiryPayload } from "@/lib/enquiry";
  *
  * Setup:
  *   1. Create an account at https://resend.com (free tier: 3,000 emails/month)
- *   2. Verify the sending domain (borothotafoleng.co.za) under Domains
+ *   2. Verify any domain you control under Domains — the sender does not have
+ *      to be the company's own domain, since this mail is an internal notice
+ *      and replyTo below points at the customer
  *   3. Put the values in .env — see .env.example
  */
 
