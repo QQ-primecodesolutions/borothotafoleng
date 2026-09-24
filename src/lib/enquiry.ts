@@ -87,7 +87,6 @@ export const contactSchema = z.object({
 
 export const quoteSchema = z.object({
   ...baseFields,
-  email: z.string().trim().email("Please enter a valid email").max(120),
   service: z.enum(SERVICE_OPTIONS, { message: "Please select a service" }),
   propertyType: z.enum(PROPERTY_TYPES, { message: "Please select a property type" }),
   location: z.string().trim().max(120).optional(),
