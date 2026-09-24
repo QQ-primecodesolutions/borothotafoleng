@@ -7,7 +7,13 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Runtime queries. On Vercel this must be the Accelerate (prisma+postgres://)
+  // URL: serverless instances freeze between requests, which kills a raw TCP
+  // pool and makes the next query wait out the pool timeout before failing.
+  url       = env("DATABASE_URL")
+  // Migrations speak raw Postgres and cannot go through Accelerate, so
+  // `prisma migrate deploy` uses this direct connection instead.
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 /// An enquiry submitted through the contact form or the quote modal.

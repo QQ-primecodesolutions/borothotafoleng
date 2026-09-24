@@ -139,14 +139,18 @@ The sending domain does **not** have to be the company's own. This mail never re
 
 Prisma ORM against **Prisma Postgres**, one `Lead` model in [`prisma/schema.prisma`](prisma/schema.prisma).
 
-Prisma Postgres offers the database under two connection strings, and either works here:
+Prisma Postgres exposes the database under two connection strings, and the project needs **both**:
 
-| Form | Looks like | Notes |
+| Variable | Form | Used for |
 | --- | --- | --- |
-| Direct (pooled TCP) | `postgres://…@pooled.db.prisma.io:5432/postgres?sslmode=require` | What the project currently uses. An ordinary Postgres DSN — any Postgres tool can read it. |
-| Accelerate | `prisma+postgres://accelerate.prisma-data.net/?api_key=…` | Pooled HTTP protocol. Only the Prisma client can speak it, and only with the extension below. |
+| `DATABASE_URL` | `prisma+postgres://accelerate.prisma-data.net/?api_key=…` | Runtime queries |
+| `DIRECT_DATABASE_URL` | `postgres://…@pooled.db.prisma.io:5432/postgres?sslmode=require` | `prisma migrate deploy` |
 
-[`src/lib/db.ts`](src/lib/db.ts) applies `withAccelerate()` from `@prisma/extension-accelerate`, which is **required** for the second form and a verified pass-through for the first. Keeping it means the connection string can be switched without touching code.
+Both are declared in the schema, so a missing `DIRECT_DATABASE_URL` fails the build.
+
+> **Don't use the direct URL for `DATABASE_URL` on Vercel.** Serverless instances are frozen between requests, which kills a raw TCP connection pool without Prisma noticing. The next query blocks for the full pool timeout and fails with `Timed out fetching a new connection from the connection pool` — visible as a 500 on some form submissions and not others, depending on how long the instance sat idle. Accelerate is HTTP and has no pool to go stale.
+
+[`src/lib/db.ts`](src/lib/db.ts) applies `withAccelerate()` from `@prisma/extension-accelerate`, which is **required** for the Accelerate URL and a verified pass-through for the direct one — so the same client code works locally against either.
 
 The `provider` in the schema is fixed at build time — Prisma cannot switch between SQLite and Postgres per environment, so local development needs a Postgres URL too.
 
