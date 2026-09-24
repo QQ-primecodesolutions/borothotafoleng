@@ -43,6 +43,12 @@ export function whatsappUrl(
 export const CONTACT_DETAILS_ARE_PLACEHOLDERS =
   COMPANY.whatsapp === "270000000000";
 
+/** Who built and maintains the site — credited in the footer and page metadata. */
+export const DEVELOPER = {
+  name: "PrimeCode Solutions",
+  url: "https://www.primecodesolutions.co.za/",
+} as const;
+
 // Navigation items — consumed by the navbar, the mobile menu and the footer.
 export const NAV_ITEMS = [
   { label: "Home", href: "#home" },

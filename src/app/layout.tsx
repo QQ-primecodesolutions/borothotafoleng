@@ -3,7 +3,7 @@ import { Poppins, Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
-import { COMPANY, SERVICES } from "@/lib/constants";
+import { COMPANY, DEVELOPER, SERVICES } from "@/lib/constants";
 
 const poppins = Poppins({
   variable: "--font-heading",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     "community development",
   ],
   authors: [{ name: COMPANY.name }],
-  creator: "PrimeCode Solutions",
+  creator: DEVELOPER.name,
   publisher: COMPANY.name,
   // The tab icon is src/app/icon.svg — Next generates the <link> tags from that
   // file automatically, so there is no `icons` entry to keep in sync here.

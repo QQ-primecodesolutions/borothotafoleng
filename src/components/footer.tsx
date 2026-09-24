@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import {
   COMPANY,
+  DEVELOPER,
   NAV_ITEMS,
   SERVICES,
   PHONE_HREF,
@@ -195,9 +196,14 @@ export function Footer() {
             <p className="text-xs text-gray-500 text-center md:text-right">
               Built with ❤️ for Borotho Tafoleng Cleaning & Maintenance.
               Developed and Maintained by{" "}
-              <span className="text-brand-blue-light font-medium">
-                PrimeCode Solutions
-              </span>
+              <a
+                href={DEVELOPER.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-blue-light font-medium hover:text-white transition-colors underline underline-offset-2"
+              >
+                {DEVELOPER.name}
+              </a>
             </p>
           </div>
         </div>
